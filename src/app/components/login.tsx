@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { BookOpen, Mail, Lock, AlertCircle, Eye, EyeOff, Shield, UserCog, GraduationCap } from 'lucide-react';
+import { loginUser, registerUser } from '../../api/auth';
 
 // USJ-R Logo SVG Component
 const USJRLogo = () => (
@@ -30,14 +31,14 @@ export function Login({ onLogin }: LoginProps) {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [signupRole, setSignupRole] = useState<'adviser' | 'student' | 'chairman'>('student');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setIsLoading(true);
 
     if (mode === 'login') {
-      // Simple validation
+      // Basic client-side validation
       if (!idNumber || !password) {
         setError('Please enter both ID number and password');
         setIsLoading(false);
@@ -50,40 +51,14 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
 
-      // Simulate login (in real app, this would be an API call)
-      setTimeout(() => {
-        // Try to get stored user data
-        const storedUsers = localStorage.getItem('usjr_users');
-        const users = storedUsers ? JSON.parse(storedUsers) : {};
-        
-        // Check if user exists in storage
-        const userData = users[idNumber];
-        
-        if (idNumber && password) {
-          // Determine role based on ID pattern
-          // Chairman IDs start with 30: 30********
-          // Adviser IDs start with 10: 10********
-          // Student IDs start with 20: 20********
-          const isChairman = idNumber.startsWith('30');
-          const isStudent = idNumber.startsWith('20');
-          const isAdviser = idNumber.startsWith('10');
-          
-          if (isChairman) {
-            onLogin('chairman', userData);
-          } else if (isStudent) {
-            onLogin('student', userData);
-          } else if (isAdviser) {
-            onLogin('adviser', userData);
-          } else {
-            setError('Invalid ID number. ID must start with 30 (Chairman), 10 (Adviser), or 20 (Student)');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          setError('Invalid credentials');
-        }
+      try {
+        const data = await loginUser({ userId: idNumber, password });
+        onLogin(data.role, { name: data.name, id: data.userId });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      } finally {
         setIsLoading(false);
-      }, 1000);
+      }
     } else if (mode === 'signup') {
       // Validation for signup
       if (!fullName || !idNumber || !password || !confirmPassword) {
@@ -104,8 +79,8 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
 
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters');
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters');
         setIsLoading(false);
         return;
       }
@@ -118,29 +93,24 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
 
-      // Simulate account creation and store user data
-      setTimeout(() => {
-        // Get existing users or create new object
-        const storedUsers = localStorage.getItem('usjr_users');
-        const users = storedUsers ? JSON.parse(storedUsers) : {};
-        
-        // Store new user
-        users[idNumber] = {
+      try {
+        await registerUser({
+          userId: idNumber,
           name: fullName,
-          id: idNumber,
-          role: signupRole,
-          password: password // In real app, this would be hashed
-        };
-        
-        localStorage.setItem('usjr_users', JSON.stringify(users));
-        
+          password,
+          confirmPassword,
+        });
+
         setSuccess('Account created successfully! Please sign in.');
         setMode('login');
         setPassword('');
         setConfirmPassword('');
         setFullName('');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create account.');
+      } finally {
         setIsLoading(false);
-      }, 1000);
+      }
     } else if (mode === 'forgot') {
       // Validation for forgot password
       if (!idNumber) {

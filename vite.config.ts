@@ -19,4 +19,16 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  server: {
+    proxy: {
+      // Forward all /api/* requests to the ASP.NET Core backend (HTTP port).
+      // Using HTTP avoids the self-signed certificate issue in development.
+      '/api': {
+        target: 'http://localhost:53006',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

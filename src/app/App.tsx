@@ -11,6 +11,7 @@ import { StudentAppointmentBooking } from './components/student-appointment-book
 import { ChairmanDashboard } from './components/chairman-dashboard';
 import { Login } from './components/login';
 import { Notifications } from './components/notifications';
+import { logoutUser } from '../api/auth';
 import { LayoutDashboard, Users, Calendar, Settings, Bell, LogOut, Menu, X, BookOpen, GraduationCap, UserCog, ClipboardList, Shield } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
@@ -32,6 +33,8 @@ type ChairmanViewType = 'dashboard' | 'settings';
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('adviser');
+  const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
   const [adviserView, setAdviserView] = useState<AdviserViewType>('dashboard');
   const [studentView, setStudentView] = useState<StudentViewType>('dashboard');
   const [chairmanView, setChairmanView] = useState<ChairmanViewType>('dashboard');
@@ -64,17 +67,22 @@ export default function App() {
     setSidebarOpen(false);
   };
 
-  const handleLogin = (role: UserRole = 'adviser') => {
+  const handleLogin = (role: UserRole = 'adviser', userData?: { name: string; id: string }) => {
     setIsLoggedIn(true);
     setUserRole(role);
+    setUserName(userData?.name ?? '');
+    setUserId(userData?.id ?? '');
   };
 
   const handleLogout = () => {
+    logoutUser().catch(() => {}); // fire-and-forget; token is always cleared
     setIsLoggedIn(false);
     setAdviserView('dashboard');
     setStudentView('dashboard');
     setChairmanView('dashboard');
     setUserRole('adviser');
+    setUserName('');
+    setUserId('');
   };
 
   // Show login page if not logged in
@@ -110,8 +118,8 @@ export default function App() {
       case 'dashboard':
         return (
           <StudentDashboard
-            studentName="Juan Dela Cruz"
-            studentId="2021-00123"
+            studentName={userName || 'Student'}
+            studentId={userId || '—'}
             yearLevel="BSCPE-3"
             onBookAppointment={() => handleStudentNavigation('booking')}
           />
@@ -126,8 +134,8 @@ export default function App() {
       default:
         return (
           <StudentDashboard
-            studentName="Juan Dela Cruz"
-            studentId="2021-00123"
+            studentName={userName || 'Student'}
+            studentId={userId || '—'}
             yearLevel="BSCPE-3"
             onBookAppointment={() => handleStudentNavigation('booking')}
           />
@@ -176,12 +184,14 @@ export default function App() {
               <div className="hidden sm:flex items-center gap-2">
                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-green-600 to-yellow-500 flex items-center justify-center shadow">
                   <span className="text-sm font-bold text-white">
-                    {userRole === 'adviser' ? 'MS' : userRole === 'student' ? 'JD' : 'DR'}
+                    {userName
+                      ? userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                      : userRole === 'adviser' ? 'MS' : userRole === 'student' ? 'JD' : 'DR'}
                   </span>
                 </div>
                 <div className="text-sm">
                   <p className="font-semibold text-green-800">
-                    {userRole === 'adviser' ? 'Dr. Maria Santos' : userRole === 'student' ? 'Juan Dela Cruz' : 'Dr. Roberto Cruz'}
+                    {userName || (userRole === 'adviser' ? 'Dr. Maria Santos' : userRole === 'student' ? 'Juan Dela Cruz' : 'Dr. Roberto Cruz')}
                   </p>
                   <p className="text-xs text-gray-600">
                     {userRole === 'adviser' ? 'Academic Adviser' : userRole === 'student' ? 'BSCPE-3 Student' : 'Department Chairman'}
